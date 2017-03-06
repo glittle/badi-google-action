@@ -11,7 +11,7 @@
         "intent": "assistant.intent.action.MAIN"
       },
       "httpExecution": {
-        "url": "YOUR_ENDPOINT_URL"
+        "url": "https://www.wondrous-badi.today/gaction/"
       }
     }
   ]

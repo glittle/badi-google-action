@@ -22,35 +22,55 @@ let express = require('express');
 let bodyParser = require('body-parser');
 
 let app = express();
-app.set('port', (process.env.PORT || 8080));
-app.use(bodyParser.json({type: 'application/json'}));
+app.set('port', (process.env.PORT || 8001));
+app.use(bodyParser.json({
+  type: 'application/json'
+}));
+
+app.get('/*', function (request, response) {
+  console.log('incoming GET');
+  response.send('hello');
+});
 
 app.post('/', function (request, response) {
   console.log('handle post');
-  const assistant = new ActionsSdkAssistant({request: request, response: response});
+  const assistant = new ActionsSdkAssistant({
+    request: request,
+    response: response
+  });
 
-  function mainIntent (assistant) {
+  function mainIntent(assistant) {
     console.log('mainIntent');
     let inputPrompt = assistant.buildInputPrompt(true, '<speak>Hi! <break time="1"/> ' +
-          'I can read out an ordinal like ' +
-          '<say-as interpret-as="ordinal">123</say-as>. Say a number.</speak>',
-          ['I didn\'t hear a number', 'If you\'re still there, what\'s the number?', 'What is the number?']);
+      'I can read out an ordinal like ' +
+      '<say-as interpret-as="ordinal">123</say-as>. Say a number.</speak>', ['I didn\'t hear a number', 'If you\'re still there, what\'s the number?', 'What is the number?']);
+
+    // let permission = assistant.SupportedPermissions.NAME;
+    // assistant.askForPermission('To address you by name', permission);
+
     assistant.ask(inputPrompt);
   }
 
-  function rawInput (assistant) {
+  function rawInput(assistant) {
     console.log('rawInput');
     if (assistant.getRawInput() === 'bye') {
       assistant.tell('Goodbye!');
     } else {
       let inputPrompt = assistant.buildInputPrompt(true, '<speak>You said, <say-as interpret-as="ordinal">' +
-        assistant.getRawInput() + '</say-as></speak>',
-          ['I didn\'t hear a number', 'If you\'re still there, what\'s the number?', 'What is the number?']);
+        assistant.getRawInput() + '</say-as></speak>', ['I didn\'t hear a number', 'If you\'re still there, what\'s the number?', 'What is the number?']);
       assistant.ask(inputPrompt);
     }
   }
 
+  function requestPermission (assistant) {
+  let permission = [
+    assistant.SupportedPermissions.DEVICE_PRECISE_LOCATION
+  ];
+  assistant.askForPermissions('To pick you up', permissions);
+}
+
   let actionMap = new Map();
+  actionMap.set('request_permission', requestPermission);
   actionMap.set(assistant.StandardIntents.MAIN, mainIntent);
   actionMap.set(assistant.StandardIntents.TEXT, rawInput);
 
