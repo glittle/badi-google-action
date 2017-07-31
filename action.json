@@ -1,18 +1,29 @@
 {
-  "versionLabel": "1.0.0",
-  "agentInfo": {
-    "languageCode": "en-US",
-    "projectId": "hello",
-    "voiceName": "male_1"
-  },
   "actions": [
     {
-      "initialTrigger": {
-        "intent": "assistant.intent.action.MAIN"
+      "description": "Verses of God",
+      "name": "MAIN",
+      "fulfillment": {
+        "conversationName": "verseForToday"
       },
-      "httpExecution": {
-        "url": "https://www.wondrous-badi.today/gaction/"
+      "intent": {
+        "name": "actions.intent.MAIN"
+      }
+    },
+    {
+      "name": "getTime",
+      "fulfillment": {
+        "conversationName": "verseForToday"
+      },
+      "intent": {
+        "name": "actions.intent.DATETIME"
       }
     }
-  ]
+  ],
+  "conversations": {
+    "verseForToday": {
+      "name": "verseForToday",
+      "url": "https://wondrous-badi.today/gaction"
+    }
+  }
 }
