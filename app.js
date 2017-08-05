@@ -1,72 +1,143 @@
-// Copyright 2016, Google, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// [START app]
 'use strict';
 
 let verseHelper = require('./verseHelper');
 
-process.env.DEBUG = 'actions-on-google:*';
+const App = require('actions-on-google').ApiAiApp;
+// exports.scratch1 = (request, response) => {
+//   const app = new App({ request, response });
 
-let ActionsSdkAssistant = require('actions-on-google').ActionsSdkAssistant;
+
+//   const actionMap = new Map();
+//   actionMap.set('tell.answer', tellAnswer);
+//   app.handleRequest(actionMap);
+// };
+
 let express = require('express');
 let bodyParser = require('body-parser');
 
-let app = express();
-app.set('port', (process.env.PORT || 8001));
-app.use(bodyParser.json({
+var lastRequestFromAnyUser = '';
+
+let expressApp = express();
+expressApp.set('port', (process.env.PORT || 8001));
+expressApp.use(bodyParser.json({
   type: 'application/json'
 }));
 
-app.get('/*', function (request, response) {
+
+expressApp.get('/*', function (request, response) {
   console.log('incoming GET');
   var x = verseHelper.forNow(new Date()).verse;
   response.send('hello ' + x);
 });
 
-app.post('/', function (request, response) {
+expressApp.post('/', function (request, response) {
   console.log('handle post');
-  const assistant = new ActionsSdkAssistant({
+  const app = new App({
     request: request,
     response: response
   });
 
-  function mainIntent(assistant) {
+  function tellAnswer() {
+    let category = app.getArgument('s1-category');
+
+    console.log('body', request.body)
+    console.log('data', request.body.originalRequest ? request.body.originalRequest.data : '-')
+
+    var sessionId = request.body.sessionId;
+    console.log('session', sessionId);
+
+    console.log('getDateTime', app.getDateTime())
+    console.log('isInSandbox', app.isInSandbox())
+    console.log('getSurfaceCapabilities', app.getSurfaceCapabilities())
+    console.log('getInputType', app.getInputType())
+    console.log('getDeliveryAddress', app.getDeliveryAddress())
+    console.log('result.contacts', app.getDeliveryAddress())
+
+    tell(category);
+  }
+
+  function tellAgain() {
+    var repeatNum = +app.getArgument('repeatNum') || 1
+    console.log('last', repeatNum, lastRequestFromAnyUser);
+    tell(lastRequestFromAnyUser, true, repeatNum)
+  }
+
+  function tell(category, again, repeatNum) {
+    lastRequestFromAnyUser = category, repeatNum;
+    console.log(app.sessionId);
+    var speak = ['<speak>'];
+    if (category === 'date' || category === 'both') {
+      speak.push('The date is...');
+    }
+    if (category === 'both') {
+      speak.push('<break time="3s"/>');
+    }
+    if (category === 'verse' || category === 'both') {
+      // app1.ask('The verse is...');
+      var info = verseHelper.forNow(new Date());
+      if (again) {
+        repeatNum = repeatNum || 1;
+        for (var r = 0; r < repeatNum; r++) {
+          if (r > 0) {
+            speak.push('<break time="5s"/>');
+          }
+          if (r > 0 || repeatNum > 1) {
+            speak.push(`<say-as interpret-as="ordinal">${r + 1}</say-as>`)
+            speak.push('<break time="1s"/>');
+          }
+          speak.push(info.verse);
+        }
+      } else {
+        speak.push(info.isEve
+          ? "The verse for this evening is: "
+          : "The verse for this morning is: ");
+        speak.push('<break time="1s"/>');
+        speak.push(info.verse);
+
+        speak.push('<break time="20s"/>');
+        speak.push('I can repeat that a number of times if you wish. Just let me know how many times!');
+      }
+    }
+    if (speak.length === 1) {
+      speak.push('Sorry. Did you want today\'s Verse or Date?');
+    }
+    speak.push('</speak>')
+    app.ask(speak.join(' '));
+  }
+
+
+
+
+
+
+
+
+
+  function mainIntent() {
     console.log('mainIntent');
-    let inputPrompt = assistant.buildInputPrompt(true, '<speak>Hi! <break time="1"/> ' +
+    let inputPrompt = app.buildInputPrompt(true, '<speak>Hi! <break time="1"/> ' +
       'I can read out an ordinal like ' +
       '<say-as interpret-as="ordinal">123</say-as>. Say a number.</speak>', ['I didn\'t hear a number', 'If you\'re still there, what\'s the number?', 'What is the number?']);
 
     // let permission = assistant.SupportedPermissions.NAME;
     // assistant.askForPermission('To address you by name', permission);
 
-    assistant.ask(inputPrompt);
-    assistant.tell();
+    app.ask(inputPrompt);
+    app.tell();
   }
 
-  function rawInput(assistant) {
+  function rawInput() {
     console.log('rawInput');
-    
-    if (assistant.getRawInput() === 'bye') {
-      assistant.tell('Goodbye!');
+    console.log(app.getDeviceLocation())
+    if (app.getRawInput() === 'bye') {
+      app.tell('Goodbye!');
     } else {
       var x = verseHelper.forNow(new Date()).verse;
-      assistant.tell(x);
+      app.tell(x);
     }
   }
 
-  function requestPermission(assistant) {
+  function requestPermission() {
     let permission = [
       // assistant.SupportedPermissions.DEVICE_PRECISE_LOCATION
     ];
@@ -74,17 +145,16 @@ app.post('/', function (request, response) {
   }
 
   let actionMap = new Map();
+  actionMap.set('tell.answer', tellAnswer);
+  actionMap.set('tell.again', tellAgain);
   // actionMap.set('request_permission', requestPermission);
-  actionMap.set(assistant.StandardIntents.MAIN, rawInput);
-  actionMap.set(assistant.StandardIntents.TEXT, rawInput);
   // actionMap.set(actions.intent.DATETIME, rawInput);
 
-  assistant.handleRequest(actionMap);
+  app.handleRequest(actionMap);
 });
 
 // Start the server
-let server = app.listen(app.get('port'), function () {
+let server = expressApp.listen(expressApp.get('port'), function () {
   console.log('App listening on port %s', server.address().port);
   console.log('Press Ctrl+C to quit.');
 });
-// [END app]

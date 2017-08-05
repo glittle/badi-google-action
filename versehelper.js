@@ -6,7 +6,7 @@ function forNow(date) {
     var isEve = date.getHours() > 12;
     var dayVerses = verses[key];
 
-    console.log(date, date.getHours(), key, isEve, dayVerses)
+    // console.log(date, date.getHours(), key, isEve, dayVerses)
 
     if (dayVerses) {
         var verseInfo = dayVerses[isEve ? 'pm' : 'am'];
@@ -14,6 +14,7 @@ function forNow(date) {
         if (verseInfo) {
             return {
                 suffix: `Bahá'u'lláh, ${verseInfo.r}`,
+                isEve: isEve,
                 verse: verseInfo.q
             }
         }

@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "description": "Verses of God",
+      "description": "Reciting the Verses",
       "name": "MAIN",
       "fulfillment": {
         "conversationName": "verseForToday"
