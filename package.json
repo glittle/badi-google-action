@@ -26,9 +26,11 @@
     ]
   },
   "dependencies": {
+    "actions-on-google": "^1.0.0",
+  
     "body-parser": "^1.15.2",
     "express": "^4.13.4",
-    "actions-on-google": "^1.0.0"
+    "firebase-admin": "^5.1.0"
   },
   "devDependencies": {
     "semistandard": "^9.1.0"
