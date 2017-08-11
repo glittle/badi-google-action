@@ -1,4 +1,4 @@
-let verses = require('./assets/verses.json');
+let verses = require('./../assets/verses.json');
 
 function forNow(date) {
     // var key = '5.3';//sample

@@ -2,4 +2,4 @@ node_modules
 *.DS_Store
 creds.data
 scratch1-889bb-firebase-adminsdk-rklgl-cedce508cb.json
-bst.json
+.env

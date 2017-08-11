@@ -26,11 +26,14 @@
     ]
   },
   "dependencies": {
-    "actions-on-google": "^1.0.0",
-  
-    "body-parser": "^1.15.2",
     "express": "^4.13.4",
-    "firebase-admin": "^5.1.0"
+    "body-parser": "^1.15.2",
+    "firebase-admin": "^5.1.0",
+    "actions-on-google": "^1.0.0",
+    "dotenv": "^2.0.0",
+    "moment": "^2.13.0",
+    "moment-timezone": "^0.5.4",
+    "timezonedb-node": "^1.0.7"
   },
   "devDependencies": {
     "semistandard": "^9.1.0"
