@@ -20,6 +20,7 @@ function handlePost(request, response) {
 
     console.log('\r\n\r\n---------------------------');
     console.log('------ incoming POST ------');
+    console.log(`---${now.toLocaleTimeString()}---`);
     const app = new App({
         request: request,
         response: response
@@ -60,36 +61,40 @@ function handlePost(request, response) {
         console.log('default welcome')
         if (!userInfo || !userInfo.coord) {
             console.log('asking for location')
-            app.ask(
-                {
-                    speech: 'allow abbha!',
-                    displayText: 'Alláh-u-Abhá!'
-                }
-            );
+            // app.ask(
+            //     {
+            //         speech: 'allow abbha!',
+            //         displayText: 'Alláh-u-Abhá!'
+            //     }
+            // );
             app.askForPermission('To know what day it is where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
             return;
         } else {
-            app.ask(
-                app.buildRichResponse()
-                    .addSimpleResponse({
-                        speech: 'allowabha! Welcome back!',
-                        displayText: 'Alláh-u-Abhá! Welcome back!'
-                    })
-            );
+            console.log('set context 1')
+            app.setContext('location_known', 99, userInfo.coord);
+            console.log('set context 2')
+            app.ask({
+                speech: '<speak>allowabha! Welcome back!</speak>',
+                displayText: 'Alláh-u-Abhá! Welcome back!',
+                followupEvent: {
+                    name: "givePrompt"
+                }
+            })
+            console.log('set context 3')
+            // .ask(
+            //     app.buildRichResponse()
+            //         .addSimpleResponse({
+            //             speech: 'allowabha! Welcome back!',
+            //             displayText: 'Alláh-u-Abhá! Welcome back!'
+            //         })
+            // );
             // app.setContext('location_known');
-            // app.ask({
-            //     "followupEvent": {
-            //         "name": "event1",
-            //         "data": {
-            //             "locationKnown": "true"
-            //         }
-            //     }
-            // });
         }
     }
 
+
     function tellAnswer() {
-        let category = app.getArgument('s1-category');
+        let topic = app.getArgument('topic');
 
         // console.log('body', request.body)
         // console.log('data', request.body.originalRequest ? request.body.originalRequest.data : '-')
@@ -104,40 +109,40 @@ function handlePost(request, response) {
         // console.log('getDeliveryAddress', app.getDeliveryAddress())
         // console.log('result.contacts', app.getDeliveryAddress())
 
-        tell(category);
+        tell(topic);
     }
 
     function tellAgain() {
         var repeatNum = +app.getArgument('repeatNum') || 1
         console.log('last', repeatNum, lastRequest);
-        tell(lastRequest[userId].category, true, repeatNum)
+        tell(lastRequest[userId].topic, true, repeatNum)
     }
 
-    function tell(category, again, repeatNum) {
+    function tell(topic, again, repeatNum) {
         var last = lastRequest[userId];
         if (!last) {
             last = lastRequest[userId] = { times: 1 };
         }
-        last.category = category;
+        last.topic = topic;
         last.times++;
 
+        console.log(1, topic)
+        console.log(2, userId)
+        console.log(3, userInfo)
+        console.log(4, knownUsers)
+
         var user = knownUsers[userId];
-        var name = user ? user.coord.latitude : '';
 
         console.log('session', userId, last);
         var speak = ['<speak>'];
-        if (name) {
-            speak.push(name)
-            speak.push(',')
-        }
-        if (category === 'date' || category === 'both') {
+        if (topic === 'date' || topic === 'both') {
             speak.push('The date is...');
-            speak.push(userInfo.coords.latitude);
+            speak.push(userInfo.coord.latitude);
         }
-        if (category === 'both') {
+        if (topic === 'both') {
             speak.push('<break time="3s"/>');
         }
-        if (category === 'verse' || category === 'both') {
+        if (topic === 'verse' || topic === 'both') {
             // app1.ask('The verse is...');
             var info = verseHelper.forNow(new Date());
             if (again) {
@@ -234,12 +239,17 @@ function handlePost(request, response) {
             userRef.update({ coord: coord });
             userInfo.coord = coord;
 
-            console.log('location coords saved')
+            console.log('location coord saved')
 
-            app.setContext('location_known');
-            app.ask('Thanks!');
+            app.ask({
+                speech: '<speak>allowabha! Welcome back!</speak>',
+                displayText: 'Alláh-u-Abhá! Welcome back!',
+                followupEvent: {
+                    name: "givePrompt"
+                }
+            })
         } else {
-            app.tell('Sorry, I need to know about where you are.');
+            // app.tell('Sorry, I need to know about where you are.');
         }
 
         // console.log('requesting permission!')
@@ -272,7 +282,7 @@ function handlePost(request, response) {
 
     let actionMap = new Map();
     actionMap.set('input.welcome', welcome);
-    actionMap.set('input.unknown', receiveLocation);
+    actionMap.set('input.welcome.fallback', receiveLocation);
 
     actionMap.set('tell.answer', tellAnswer);
     actionMap.set('get_answer', tellAnswer);
