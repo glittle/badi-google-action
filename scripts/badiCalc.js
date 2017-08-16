@@ -98,7 +98,7 @@ function addTodayInfoToAnswers(profile, answers) {
     greeting = (`Today is`);
   }
 
-  answers.push(greeting + ` the  <say-as interpret-as="ordinal">${bDate.d}</say-as>  day of ${monthMeaning[bDate.m]} in the Wondrous calendar!`);
+  answers.push(greeting + ` the  <say-as interpret-as="ordinal">${bDate.d}</say-as>  day of the month of ${monthMeaning[bDate.m]} in the Wondrous calendar!`);
   //(${monthAr[bDate.m]}) 
   //(${monthMeaning[bDate.d] })
 
@@ -106,7 +106,9 @@ function addTodayInfoToAnswers(profile, answers) {
   //  console.log('start of day: ' + bDateInfo.startingSunset.format());
 
   var age = nowTz.diff(bDateInfo.startingSunset, 'minute');
-  console.log(age);
+
+  answers.push('  \n  <break time="1s"/>');
+
   if (age >= 0 && age < 5) {
     answers.push(`It just started with sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.startingSunset.format('HH:mm')}</say-as>!`);
   } else if (bDate.eve) {

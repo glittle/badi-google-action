@@ -45,7 +45,7 @@ function handlePost(request, response) {
     if (!userInfo) {
         userInfo = knownUsers[userId] = {};
     }
-    console.log('initial user', userInfo);
+    console.log('userInfo', userInfo);
 
     var userRef = dbHelper.knownUsersRef.child(userId);
     userRef.update({ last_access: now })
@@ -71,7 +71,7 @@ function handlePost(request, response) {
             //         displayText: 'Alláh-u-Abhá!'
             //     }
             // );
-            app.askForPermission('To know sunset times where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
+            app.askForPermission('Hello! Welcome to the "Wondrous Calendar" Action! Before we get started, to know sunset times where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
             return;
         } else {
             // console.log('set context 1')
@@ -111,7 +111,8 @@ function handlePost(request, response) {
     function tellAgain() {
         var repeatNum = +app.getArgument('repeatNum') || 1
         console.log('last', repeatNum, userInfo.lastRequest);
-        tell(userInfo.lastRequest.topic, true, repeatNum)
+        var lastTopic = (userInfo.lastRequest ? userInfo.lastRequest.topic : '') || 'date';
+        tell(lastTopic, true, repeatNum)
     }
 
     function tell(topic, again, repeatNum) {
@@ -122,8 +123,9 @@ function handlePost(request, response) {
         last.topic = topic;
         last.times++;
 
+
+        const voiceNormal = '<voice gender="female" variant="2">';
         const voiceVerse = '<voice gender="male" variant="2">';
-        const voiceNormal = voiceVerse; //'<voice gender="female" variant="2">';
 
         var speak = ['<speak>'];
         speak.push(voiceNormal);
@@ -137,7 +139,6 @@ function handlePost(request, response) {
         if (topic === 'verse' || topic === 'both') {
             // app1.ask('The verse is...');
             var now = moment.tz(userInfo.zoneName);
-            console.log('verse at', now);
             var info = verseHelper.forNow(now);
             if (again) {
                 repeatNum = repeatNum || 1;
@@ -145,27 +146,56 @@ function handlePost(request, response) {
                     if (r > 0) {
                         speak.push('<break time="5s"/>');
                     }
-                    if (r > 0 || repeatNum > 1) { 
+                    if (r > 0 || repeatNum > 1) {
                         speak.push(`\n<say-as interpret-as="ordinal">${r + 1}</say-as>`)
                         speak.push('\n<break time="1s"/>');
                     }
+                    speak.push(voiceVerse);
                     speak.push(info.verse);
+                    speak.push('</voice>');
+                    speak.push(voiceNormal);
                 }
             } else {
                 speak.push(info.isEve
                     ? "The verse for this evening is: "
                     : "The verse for this morning is: ");
-                speak.push('\n\n<break time="1s"/>');
+                speak.push('  \n  \n  <break time="1s"/>');
                 speak.push('</voice>');
                 speak.push(voiceVerse);
                 speak.push(info.verse);
                 speak.push('</voice>');
                 speak.push(voiceNormal);
 
-                speak.push('\n\n\n<break time="20s"/>');
+                speak.push('\n  \n  \n  <break time="20s"/>');
                 speak.push('(I can repeat that a number of times if you wish. Just let me know how many times!)');
             }
         }
+
+        if (topic === 'users') {
+            var locations = {};
+            Object.keys(knownUsers).forEach(function (key) {
+                var u = knownUsers[key];
+                var loc = u.location || '?';
+                if (loc) {
+                    if (locations[loc]) {
+                        locations[loc]++;
+                    } else {
+                        locations[loc] = 1;
+                    }
+                }
+            });
+            var array = [];
+            Object.keys(locations).forEach(function (key) {
+                var num = locations[key];
+                array.push(key + (num > 1 ? ` (${num})` : ''))
+            });
+            array.sort();
+            array[array.length - 1] = 'and ' + array[array.length - 1];
+            var text = array.join(array.length > 2 ? ', ' : ' ');
+
+            speak.push(`I've talked to ${Object.keys(knownUsers).length} people so far! \n\n They are from: ${text}.`);
+        }
+
         if (speak.length === 1) {
             speak.push('Sorry. Did you want today\'s Verse or Date?');
         }
