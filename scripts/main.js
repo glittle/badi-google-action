@@ -1,18 +1,22 @@
-const timezonedb = require('timezonedb-node')(process.env.timeZoneKey);
 const App = require('actions-on-google').ApiAiApp;
-let verseHelper = require('./verseHelper');
+const moment = require('moment-timezone');
 
+const badiCalc = require('./badiCalc');
+const verseHelper = require('./verseHelper');
+const externalInfo = require('./externalInfo');
+const general = require('./general');
 const dbHelper = require('./db');
+
+console.log(' ');
+console.log('======= SERVER RESTARTED ==============================');
 
 var knownUsers = null;
 
 dbHelper.knownUsersRef.once('value', function (snapshot) {
     knownUsers = snapshot.val() || {};
-    console.log('updated from db', knownUsers)
+    console.log('initial update from db', Object.keys(knownUsers).length, knownUsers);
 });
 
-
-var lastRequest = {};
 
 function handlePost(request, response) {
 
@@ -30,13 +34,13 @@ function handlePost(request, response) {
 
 
 
-    console.log(JSON.stringify(request.body));
+    // console.log(JSON.stringify(request.body));
 
-    console.log('users', knownUsers);
+    // console.log('users', knownUsers);
 
     // determine who this is
-    var userId = getUserId(app, request);
-    console.log('userId', userId)
+    var userId = general.extractUserId(app, request);
+    // console.log('userId', userId)
     var userInfo = knownUsers[userId];
     if (!userInfo) {
         userInfo = knownUsers[userId] = {};
@@ -58,7 +62,7 @@ function handlePost(request, response) {
     // }
 
     function welcome() {
-        console.log('default welcome')
+        // console.log('default welcome')
         if (!userInfo || !userInfo.coord) {
             console.log('asking for location')
             // app.ask(
@@ -67,28 +71,20 @@ function handlePost(request, response) {
             //         displayText: 'Alláh-u-Abhá!'
             //     }
             // );
-            app.askForPermission('To know what day it is where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
+            app.askForPermission('To know sunset times where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
             return;
         } else {
-            console.log('set context 1')
+            // console.log('set context 1')
             app.setContext('location_known', 99, userInfo.coord);
-            console.log('set context 2')
+            // console.log('set context 2')
             app.ask({
-                speech: '<speak>allowabha! Welcome back!</speak>',
-                displayText: 'Alláh-u-Abhá! Welcome back!',
+                speech: '<speak>allowabha! Welcome back! What would you like to hear?</speak>',
+                displayText: 'Alláh-u-Abhá! Welcome back! What would you like to hear?',
                 followupEvent: {
                     name: "givePrompt"
                 }
             })
-            console.log('set context 3')
-            // .ask(
-            //     app.buildRichResponse()
-            //         .addSimpleResponse({
-            //             speech: 'allowabha! Welcome back!',
-            //             displayText: 'Alláh-u-Abhá! Welcome back!'
-            //         })
-            // );
-            // app.setContext('location_known');
+            // console.log('set context 3')
         }
     }
 
@@ -100,7 +96,7 @@ function handlePost(request, response) {
         // console.log('data', request.body.originalRequest ? request.body.originalRequest.data : '-')
 
         var sessionId = request.body.sessionId;
-        console.log('session', sessionId);
+        // console.log('session', sessionId);
 
         // console.log('getDateTime', app.getDateTime())
         // console.log('isInSandbox', app.isInSandbox())
@@ -114,44 +110,42 @@ function handlePost(request, response) {
 
     function tellAgain() {
         var repeatNum = +app.getArgument('repeatNum') || 1
-        console.log('last', repeatNum, lastRequest);
-        tell(lastRequest[userId].topic, true, repeatNum)
+        console.log('last', repeatNum, userInfo.lastRequest);
+        tell(userInfo.lastRequest.topic, true, repeatNum)
     }
 
     function tell(topic, again, repeatNum) {
-        var last = lastRequest[userId];
+        var last = userInfo.lastRequest;
         if (!last) {
-            last = lastRequest[userId] = { times: 1 };
+            last = userInfo.lastRequest = { times: 1 };
         }
         last.topic = topic;
         last.times++;
 
-        console.log(1, topic)
-        console.log(2, userId)
-        console.log(3, userInfo)
-        console.log(4, knownUsers)
+        const voiceVerse = '<voice gender="male" variant="2">';
+        const voiceNormal = voiceVerse; //'<voice gender="female" variant="2">';
 
-        var user = knownUsers[userId];
-
-        console.log('session', userId, last);
         var speak = ['<speak>'];
+        speak.push(voiceNormal);
+
         if (topic === 'date' || topic === 'both') {
-            speak.push('The date is...');
-            speak.push(userInfo.coord.latitude);
+            badiCalc.addTodayInfoToAnswers(userInfo, speak);
         }
         if (topic === 'both') {
             speak.push('<break time="3s"/>');
         }
         if (topic === 'verse' || topic === 'both') {
             // app1.ask('The verse is...');
-            var info = verseHelper.forNow(new Date());
+            var now = moment.tz(userInfo.zoneName);
+            console.log('verse at', now);
+            var info = verseHelper.forNow(now);
             if (again) {
                 repeatNum = repeatNum || 1;
                 for (var r = 0; r < repeatNum; r++) {
                     if (r > 0) {
                         speak.push('<break time="5s"/>');
                     }
-                    if (r > 0 || repeatNum > 1) {
+                    if (r > 0 || repeatNum > 1) { 
                         speak.push(`\n<say-as interpret-as="ordinal">${r + 1}</say-as>`)
                         speak.push('\n<break time="1s"/>');
                     }
@@ -162,16 +156,20 @@ function handlePost(request, response) {
                     ? "The verse for this evening is: "
                     : "The verse for this morning is: ");
                 speak.push('\n\n<break time="1s"/>');
+                speak.push('</voice>');
+                speak.push(voiceVerse);
                 speak.push(info.verse);
+                speak.push('</voice>');
+                speak.push(voiceNormal);
 
                 speak.push('\n\n\n<break time="20s"/>');
-                speak.push('I can repeat that a number of times if you wish. Just let me know how many times!');
+                speak.push('(I can repeat that a number of times if you wish. Just let me know how many times!)');
             }
         }
         if (speak.length === 1) {
             speak.push('Sorry. Did you want today\'s Verse or Date?');
         }
-        speak.push('</speak>')
+        speak.push('</voice></speak>')
         app.ask(speak.join(' '));
     }
 
@@ -233,27 +231,30 @@ function handlePost(request, response) {
                   "longitude": -113.95960439999999
                 }
             */
-            var coord = app.getDeviceLocation().coordinates;
+            var coordRaw = app.getDeviceLocation().coordinates;
+            var coord = {
+                lat: coordRaw.latitude,
+                lng: coordRaw.longitude
+            };
 
             var userInfo = knownUsers[userId];
             userRef.update({ coord: coord });
             userInfo.coord = coord;
 
-            console.log('location coord saved')
+            externalInfo.getTimezoneInfo(userRef, userInfo);
+            externalInfo.getLocationName(userRef, userInfo);
 
             app.ask({
-                speech: '<speak>allowabha! Welcome back!</speak>',
-                displayText: 'Alláh-u-Abhá! Welcome back!',
+                speech: '<speak>Okay, we are all set! Would you like to hear the verse or the date?</speak>',
+                displayText: 'Okay, we are all set! Would you like to hear the verse or the date?',
                 followupEvent: {
-                    name: "givePrompt"
+                    name: "givePrompt" // not working
                 }
             })
-        } else {
-            // app.tell('Sorry, I need to know about where you are.');
-        }
 
-        // console.log('requesting permission!')
-        // app.askForPermission('To know who you are', app.SupportedPermissions.NAME);
+        } else {
+            app.tell('Sorry, I\'m a bit confused right now and have to go. Please call for me when you want to try again!');
+        }
     }
 
     function spacedOut(s) {
@@ -294,20 +295,6 @@ function handlePost(request, response) {
     app.handleRequest(actionMap);
 }
 
-
-function getUserId(app, request) {
-    var id = '';
-    if (app.isInSandbox()) {
-        id = 'sandbox';
-    }
-    else {
-        id = ((app.getUser() || {}).userId || request.body.sessionId);
-        if (id.substr(0, 3) === '150') {
-            id = 'sandbox'
-        }
-    }
-    return dbHelper.encodeAsFirebaseKey(id);
-}
 
 module.exports = {
     handlePost

@@ -1,12 +1,12 @@
-let verses = require('./../assets/verses.json');
+const verses = require('./../assets/verses.json');
 
-function forNow(date) {
+function forNow(mDate) {
     // var key = '5.3';//sample
-    var key = (date.getMonth() + 1) + '.' + date.getDate();
-    var isEve = date.getHours() > 12;
+    var key = mDate.format('M.d');
+    var isEve = mDate.hour() > 15; // 4 pm and later?
     var dayVerses = verses[key];
 
-    // console.log(date, date.getHours(), key, isEve, dayVerses)
+    console.log('verse', mDate, mDate.hour(), key, isEve, dayVerses)
 
     if (dayVerses) {
         var verseInfo = dayVerses[isEve ? 'pm' : 'am'];

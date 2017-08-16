@@ -1,7 +1,7 @@
 'use strict'
 
-const sunCalc = require('./sunCalc');
 const moment = require('moment-timezone');
+const sunCalc = require('./sunCalc');
 
 var _nawRuzOffsetFrom21 = [];
 var _twinHolyBirthdays = [];
@@ -18,7 +18,7 @@ function addSunTimes(profile, answers) {
   }
   var readableFormat = 'MMM D, HH:mm';
 
-  var zoneName = profile.tzInfo.zoneName;
+  var zoneName = profile.zoneName;
   var nowTz = moment.tz(zoneName);
   var noonTz = moment(nowTz).hour(12).minute(0).second(0);
   var tomorrowNoonTz = moment(noonTz).add(24, 'hours');
@@ -75,7 +75,7 @@ function addSunTimes(profile, answers) {
 //}
 
 function addTodayInfoToAnswers(profile, answers) {
-  var zoneName = profile.tzInfo.zoneName;
+  var zoneName = profile.zoneName;
   var nowTz = moment.tz(zoneName);
 
   var coord = profile.coord;
@@ -86,32 +86,33 @@ function addTodayInfoToAnswers(profile, answers) {
   //  noon.setHours(12, 0, 0, 0);
   //  var sun = sunCalc.getTimes(noon, coord.lat, coord.lng);
   //  addHours(sun.sunset, offset);
+  answers.push(`It is currently <say-as interpret-as="time" format="hm24">${nowTz.format('HH:mm')}</say-as> in ${profile.location}.`)
 
   var nowHours = nowTz.hours();
   var greeting;
   if (nowHours >= 5 && nowHours <= 10) {
-    greeting = (`Good morning, ${profile.first_name}.`);
+    greeting = (`Today is`);
   } else if (nowHours >= 19 && nowHours <= 22) {
-    greeting = (`Good evening, ${profile.first_name}.`);
+    greeting = (`This evening is`); //, ${profile.first_name}
   } else {
-    greeting = (`Hello, ${profile.first_name}.`);
+    greeting = (`Today is`);
   }
 
-  answers.push(greeting + ` Today is ${monthMeaning[bDate.m]} / ${monthAr[bDate.m]} ${bDate.d} in the Wondrous calendar!`);
-
+  answers.push(greeting + ` the  <say-as interpret-as="ordinal">${bDate.d}</say-as>  day of ${monthMeaning[bDate.m]} in the Wondrous calendar!`);
+  //(${monthAr[bDate.m]}) 
   //(${monthMeaning[bDate.d] })
 
-//  console.log('local now: ' + nowTz.format())
-//  console.log('start of day: ' + bDateInfo.startingSunset.format());
+  //  console.log('local now: ' + nowTz.format())
+  //  console.log('start of day: ' + bDateInfo.startingSunset.format());
 
   var age = nowTz.diff(bDateInfo.startingSunset, 'minute');
   console.log(age);
   if (age >= 0 && age < 5) {
-    answers.push(`It just started with sunset at ${bDateInfo.startingSunset.format('HH:mm')}!`);
+    answers.push(`It just started with sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.startingSunset.format('HH:mm')}</say-as>!`);
   } else if (bDate.eve) {
-    answers.push(`It started with sunset at ${bDateInfo.startingSunset.format('HH:mm')}!`);
+    answers.push(`It started with sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.startingSunset.format('HH:mm')}</say-as>!`);
   } else {
-    answers.push(`It lasts until sunset at ${bDateInfo.endingSunset.format('HH:mm')}.`);
+    answers.push(`It lasts until sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.endingSunset.format('HH:mm')}</say-as>.`);
   }
   //
   //  if (bDateInfo.endingSunset) {
@@ -145,20 +146,20 @@ var getBDateInfo = function (nowTz, coord, zoneName) {
 
   var sun1 = sunCalc.getTimes(noonTz, coord.lat, coord.lng);
 
-//  console.log('local now ' + nowTz.format());
-//  console.log('local noon ' + noonTz.format());
-//  console.log(sun1);
+  //  console.log('local now ' + nowTz.format());
+  //  console.log('local noon ' + noonTz.format());
+  //  console.log(sun1);
   var sunsetTz = moment.tz(sun1.sunset, zoneName)
 
-//  console.log('local sunset ' + sunsetTz.format());
+  //  console.log('local sunset ' + sunsetTz.format());
 
   var afterSunset = nowTz.isSameOrAfter(sunsetTz, 'minute');
 
   if (afterSunset) {
-//    console.log('after sunset');
+    //    console.log('after sunset');
     noonTz.add(24, 'hours');
   }
-//  console.log('noon of target day ' + noonTz.format());
+  //  console.log('noon of target day ' + noonTz.format());
 
 
   var gYear = noonTz.year();
@@ -216,7 +217,7 @@ function getNawRuz(gYear, frag2DateOnly) {
     0,
     0,
     0
-    );
+  );
 
   if (frag2DateOnly) {
     return nawRuz;
