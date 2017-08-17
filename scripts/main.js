@@ -162,7 +162,10 @@ function handlePost(request, response) {
                 speak.push('  \n  \n  <break time="1s"/>');
                 speak.push('</voice>');
                 speak.push(voiceVerse);
+
                 speak.push(info.verse);
+                // speak.push(` - Bahá'u'lláh.  `);
+                
                 speak.push('</voice>');
                 speak.push(voiceNormal);
 
@@ -196,8 +199,8 @@ function handlePost(request, response) {
             speak.push(`I've talked to ${Object.keys(knownUsers).length} people so far! \n\n They are from: ${text}.`);
         }
 
-        if (speak.length === 1) {
-            speak.push('Sorry. Did you want today\'s Verse or Date?');
+        if (speak.length <= 2) {
+            speak.push(`Sorry, I didn't understand that. Please try again!`);
         }
         speak.push('</voice></speak>')
         app.ask(speak.join(' '));
@@ -275,8 +278,8 @@ function handlePost(request, response) {
             externalInfo.getLocationName(userRef, userInfo);
 
             app.ask({
-                speech: '<speak>Okay, we are all set! Would you like to hear the verse or the date?</speak>',
-                displayText: 'Okay, we are all set! Would you like to hear the verse or the date?',
+                speech: '<speak>Okay, we are all set! Just say "Help" to learn what I can do.</speak>',
+                displayText: 'Okay, we are all set! Just say "Help" to learn what I can do.',
                 followupEvent: {
                     name: "givePrompt" // not working
                 }
@@ -310,6 +313,44 @@ function handlePost(request, response) {
         }
     }
 
+    function tellMonthNames(app) {
+        var lang = app.getArgument('language') || 'english';
+        var doBoth = lang === 'both';
+        var list = lang === 'arabic' ? badiCalc.monthsArabic : badiCalc.monthsEnglish;
+
+        console.log(lang, list);
+
+        var speak = ['<speak>'];
+
+        // if (lang === 'arabic') {
+        //     speak.push('(Please excuse my pronounciation!) ')
+        // }
+        speak.push('Here are the names of the months in the Wondrous Calendar:')
+        for (var i = 1; i < list.length; i++) {
+            var element = list[i];
+            element = element.replace(/[`’]/g, '');
+
+            speak.push(`\n${i}<break time="1s"/>`);
+
+            if (doBoth) {
+                // element is already in English
+                var ar = badiCalc.monthsArabic[i].replace(/[`’]/g, '');
+
+                speak.push(`${ar}`);
+                speak.push(' - <break time=".5s"/>')
+                speak.push(`${element}`);
+
+            } else {
+                speak.push(`${element}`);
+            }
+            speak.push(`.  `);
+            speak.push(`<break time="2s"/>`);
+        }
+
+        speak.push('</speak>');
+        app.ask(speak.join(''));
+    }
+
 
     let actionMap = new Map();
     actionMap.set('input.welcome', welcome);
@@ -318,6 +359,9 @@ function handlePost(request, response) {
     actionMap.set('tell.answer', tellAnswer);
     actionMap.set('get_answer', tellAnswer);
     actionMap.set('tell.again', tellAgain);
+
+    actionMap.set('get.names', tellMonthNames);
+
     actionMap.set('who_am_i', whoAmI);
 
     actionMap.set('get_name', sayName);

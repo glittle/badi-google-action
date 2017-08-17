@@ -1941,6 +1941,8 @@ var gMonthLong = "January,February,March,April,May,June,July,August,September,Oc
 
 module.exports = {
   addSunTimes: addSunTimes,
-  addTodayInfoToAnswers: addTodayInfoToAnswers
+  addTodayInfoToAnswers: addTodayInfoToAnswers,
+  monthsEnglish: monthMeaning,
+  monthsArabic: monthAr
 };
 
