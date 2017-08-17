@@ -1,8 +1,4 @@
-# Glen's Baha'i Info
+# The Wondrous Calendar
 
-## Setup Instructions
-
-The backend for various bots!
-
-Check out the Action on Google: "Glen's Baha'i Info"
+Check out this Action on Google by asking for "the Wondrous Calendar"
 
