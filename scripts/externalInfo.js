@@ -39,7 +39,7 @@ function getLocationName(userRef, userInfo) {
     console.log('Determining name')
 
     caller.get(url, function (data, response) {
-        console.log('maps', data)
+        // console.log('maps', data)
 
         var results = data.results;
         var location = '';
@@ -65,17 +65,6 @@ function getLocationName(userRef, userInfo) {
 
         userInfo.location = location;
         userRef.update({ location: location });
-
-        // OneSignal.sendTag("location", location);
-        // OneSignal.sendTag("zoneName", moment.tz.guess());
-        // shared.coord.name = location;
-        // shared.coord.tz = new Date().getTimezoneOffset();
-        // vue.name = location;
-
-        // setTimeout(function () {
-        //     vue.updateUiToNewLocation()
-        // }, 0)
-
     });
 
 }
@@ -86,6 +75,8 @@ function toQueryString(obj) {
     })
         .join("&");
 }
+
+
 
 module.exports = {
     getTimezoneInfo,

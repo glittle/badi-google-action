@@ -2,6 +2,7 @@
 
 const moment = require('moment-timezone');
 const sunCalc = require('./sunCalc');
+const general = require('./general');
 
 var _nawRuzOffsetFrom21 = [];
 var _twinHolyBirthdays = [];
@@ -10,13 +11,14 @@ const sunCalcReady = false;
 
 fillDatePresets();
 
-function addSunTimes(profile, answers) {
+function addSunTimes(profile, speech, text) {
   var coord = profile.coord;
   if (!coord) {
-    answers.push('Sorry. I don\'t know where you are, so can\'t tell you when sunset is.');
+    speech.push('Sorry. I don\'t know where you are, so can\'t tell you when sunset is.');
+    text.push('Sorry. I don\'t know where you are, so can\'t tell you when sunset is.');
     return;
   }
-  var readableFormat = 'MMM D, HH:mm';
+  var readableFormat = 'MMMM D, h:mm a';
 
   var zoneName = profile.zoneName;
   var nowTz = moment.tz(zoneName);
@@ -29,34 +31,46 @@ function addSunTimes(profile, answers) {
 
   if (nowTz.isAfter(sunset1Tz)) {
     // eve of day1 into day2
-    answers.push(`Starting Sunset: ${sunset1Tz.format(readableFormat)}`);
+    speech.push(`Starting Sunset: ${sunset1Tz.format(readableFormat)}`);
+    text.push(`Starting Sunset: ${sunset1Tz.format(readableFormat)}`);
 
     var sun2 = sunCalc.getTimes(tomorrowNoonTz, coord.lat, coord.lng);
     var sunrise2Tz = moment.tz(sun2.sunrise, zoneName)
     var sunset2Tz = moment.tz(sun2.sunset, zoneName)
 
     if (nowTz.isBefore(sunrise2Tz)) {
-      answers.push(`Now: ${nowTz.format(readableFormat)}`);
-      answers.push(`Sunrise: ${sunrise2Tz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Now: ${nowTz.format(readableFormat)}`);
+      text.push(`\nNow: ${nowTz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Sunrise: ${sunrise2Tz.format(readableFormat)}`);
+      text.push(`\nSunrise: ${sunrise2Tz.format(readableFormat)}`);
     } else {
-      answers.push(`Sunrise: ${sunrise2Tz.format(readableFormat)}`);
-      answers.push(`Now: ${nowTz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Sunrise: ${sunrise2Tz.format(readableFormat)}`);
+      text.push(`\nSunrise: ${sunrise2Tz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Now: ${nowTz.format(readableFormat)}`);
+      text.push(`\nNow: ${nowTz.format(readableFormat)}`);
     }
-    answers.push(`Ending Sunset: ${sunset2Tz.format(readableFormat)}`);
+    speech.push(`<break time="1s"/>Ending Sunset: ${sunset2Tz.format(readableFormat)}`);
+    text.push(`\nEnding Sunset: ${sunset2Tz.format(readableFormat)}`);
   } else {
     // get prior sunset
     var sun0 = sunCalc.getTimes(moment(noonTz).subtract(24, 'hours'), coord.lat, coord.lng);
     var sunset0 = moment.tz(sun0.sunset, zoneName)
 
-    answers.push(`Starting Sunset: ${sunset0.format(readableFormat)}`);
+    speech.push(`<break time="1s"/>Starting Sunset: ${sunset0.format(readableFormat)}`);
+    text.push(`Starting Sunset: ${sunset0.format(readableFormat)}`);
     if (nowTz.isBefore(sunrise1Tz)) {
-      answers.push(`Now: ${nowTz.format(readableFormat)}`);
-      answers.push(`Sunrise: ${sunrise1Tz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Now: ${nowTz.format(readableFormat)}`);
+      text.push(`\nNow: ${nowTz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Sunrise: ${sunrise1Tz.format(readableFormat)}`);
+      text.push(`\nSunrise: ${sunrise1Tz.format(readableFormat)}`);
     } else {
-      answers.push(`Sunrise: ${sunrise1Tz.format(readableFormat)}`);
-      answers.push(`Now: ${nowTz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Sunrise: ${sunrise1Tz.format(readableFormat)}`);
+      text.push(`\nSunrise: ${sunrise1Tz.format(readableFormat)}`);
+      speech.push(`<break time="1s"/>Now: ${nowTz.format(readableFormat)}`);
+      text.push(`\nNow: ${nowTz.format(readableFormat)}`);
     }
-    answers.push(`Ending Sunset: ${sunset1Tz.format(readableFormat)}`);
+    speech.push(`<break time="1s"/>Ending Sunset: ${sunset1Tz.format(readableFormat)}`);
+    text.push(`\nEnding Sunset: ${sunset1Tz.format(readableFormat)}`);
   }
 }
 
@@ -74,7 +88,7 @@ function addSunTimes(profile, answers) {
 //  return sunTimes;
 //}
 
-function addTodayInfoToAnswers(profile, answers) {
+function addTodayInfoToAnswers(profile, speech, text) {
   var zoneName = profile.zoneName;
   var nowTz = moment.tz(zoneName);
 
@@ -82,55 +96,40 @@ function addTodayInfoToAnswers(profile, answers) {
   var bDateInfo = getBDateInfo(nowTz, coord, zoneName);
   var bDate = bDateInfo.bDate;
 
-  //  var noon = new Date(now.getTime());
-  //  noon.setHours(12, 0, 0, 0);
-  //  var sun = sunCalc.getTimes(noon, coord.lat, coord.lng);
-  //  addHours(sun.sunset, offset);
-  answers.push(`It is currently <say-as interpret-as="time" format="hm24">${nowTz.format('HH:mm')}</say-as> in ${profile.location}.`)
+    // speech.push(`It is currently <say-as interpret-as="time" format="hm12">${nowTz.format('h:mm a')}</say-as> in ${profile.location}.`)
+  // text.push(`It is currently ${nowTz.format('h:mm a')} in ${profile.location}.`)
 
   var nowHours = nowTz.hours();
   var greeting;
-  if (nowHours >= 5 && nowHours <= 10) {
-    greeting = (`Today is`);
-  } else if (nowHours >= 19 && nowHours <= 22) {
+  if (nowHours >= 5 && nowHours <= 12) {
+    greeting = (`This morning is`);
+  } else if (nowHours >= 19 || nowHours < 5) {
     greeting = (`This evening is`); //, ${profile.first_name}
   } else {
     greeting = (`Today is`);
   }
 
-  answers.push(greeting + ` the  <say-as interpret-as="ordinal">${bDate.d}</say-as>  day of the month of ${monthMeaning[bDate.m]} in the Wondrous calendar!`);
-  //(${monthAr[bDate.m]}) 
-  //(${monthMeaning[bDate.d] })
+  speech.push(greeting + ` the <say-as interpret-as="ordinal">${bDate.d}</say-as> day of the month of ${monthMeaning[bDate.m]}!`);
+  text.push(greeting + ` the ${bDate.d + general.getOrdinal(bDate.d)} day of the month of ${monthMeaning[bDate.m]}!`);
 
-  //  console.log('local now: ' + nowTz.format())
-  //  console.log('start of day: ' + bDateInfo.startingSunset.format());
+  speech.push(` The <say-as interpret-as="ordinal">${bDate.d}</say-as> day is named ${monthMeaning[bDate.d]}!`);
+  text.push(` The ${bDate.d + general.getOrdinal(bDate.d)} day is named ${monthMeaning[bDate.d]}!`);
 
   var age = nowTz.diff(bDateInfo.startingSunset, 'minute');
 
-  answers.push('  \n  <break time="1s"/>');
+  speech.push('<break time="1s"/>');
+  text.push('\n\n');
 
   if (age >= 0 && age < 5) {
-    answers.push(`It just started with sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.startingSunset.format('HH:mm')}</say-as>!`);
+    speech.push(`It just started with sunset at <say-as interpret-as="time" format="hm12" detail="2">${bDateInfo.startingSunset.format('h:mm a')}</say-as>!`);
+    text.push(`It just started with sunset at ${bDateInfo.startingSunset.format('h:mm a')}!`);
   } else if (bDate.eve) {
-    answers.push(`It started with sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.startingSunset.format('HH:mm')}</say-as>!`);
+    speech.push(`It started with sunset at <say-as interpret-as="time" format="hm12" detail="2">${bDateInfo.startingSunset.format('h:mm a')}</say-as>!`);
+    text.push(`It started with sunset at ${bDateInfo.startingSunset.format('h:mm a')}!`);
   } else {
-    answers.push(`It lasts until sunset at <say-as interpret-as="time" format="hm24" detail="2">${bDateInfo.endingSunset.format('HH:mm')}</say-as>.`);
+    speech.push(`It lasts until sunset at <say-as interpret-as="time" format="hm12" detail="2">${bDateInfo.endingSunset.format('h:mm a')}</say-as>.`);
+    text.push(`It lasts until sunset at ${bDateInfo.endingSunset.format('h:mm a')}.`);
   }
-  //
-  //  if (bDateInfo.endingSunset) {
-  //    var endingSunset = bDateInfo.endingSunset;
-  //    var nowWhen = moment(nowTz).format('HHmm');
-  //    console.log(nowWhen);
-  //    var sunsetWhen = moment(endingSunset).format('HHmm');
-  //    console.log(sunsetWhen);
-  //    if (nowWhen == sunsetWhen) {
-  //      answers.push(`It just started with sunset at ${moment(endingSunset).format('HH:mm')}!`);
-  //    } else {
-  //      answers.push(`It lasts until sunset at ${moment(endingSunset).format('HH:mm')}.`);
-  //    }
-  //  } else {
-  //    answers.push(`It started with sunset at ${moment(bDateInfo.startingSunset).format('HH:mm')}.`);
-  //  }
 }
 
 //function getUserNowTime(serverDiff) {

@@ -11,6 +11,10 @@ function encodeAsFirebaseKey(string) {
         .replace(/\]/g, '%5D');
 };
 
+function getOrdinal(num) {
+  return ['','st','nd','rd'][num] || 'th';
+}
+
 function getLocationInfo(userRef, userInfo) {
 
     externalInfo.getTimezoneInfo(userRef, userInfo);
@@ -56,5 +60,6 @@ function extractUserId(app, request) {
 
 module.exports = {
     getLocationInfo,
-    extractUserId
+    extractUserId,
+    getOrdinal
 };

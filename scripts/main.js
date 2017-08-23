@@ -31,10 +31,7 @@ function handlePost(request, response) {
     });
     console.log('intent:', app.getIntent());
     console.log('intent name:', request.body.result.metadata.intentName);
-
-
-
-    // console.log(JSON.stringify(request.body));
+    console.log('body', JSON.stringify(request.body));
 
     // console.log('users', knownUsers);
 
@@ -71,7 +68,7 @@ function handlePost(request, response) {
             //         displayText: 'Alláh-u-Abhá!'
             //     }
             // );
-            app.askForPermission('Hello! Welcome to the "Wondrous Calendar" Action! Before we get started, to know sunset times where you are', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
+            app.askForPermission('Hello! Welcome to the "Wondrous Calendar"!  Before we get started, to give you correct answers, ', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
             return;
         } else {
             // console.log('set context 1')
@@ -88,6 +85,13 @@ function handlePost(request, response) {
         }
     }
 
+    function tellVerse() {
+        tell('verse');
+    }
+
+    function tellDate() {
+        tell('date');
+    }
 
     function tellAnswer() {
         let topic = app.getArgument('topic');
@@ -127,14 +131,16 @@ function handlePost(request, response) {
         const voiceNormal = '<voice gender="female" variant="2">';
         const voiceVerse = '<voice gender="male" variant="2">';
 
-        var speak = ['<speak>'];
-        speak.push(voiceNormal);
+        var speech = ['<speak>'];
+        var text = [];
+        speech.push(voiceNormal);
 
         if (topic === 'date' || topic === 'both') {
-            badiCalc.addTodayInfoToAnswers(userInfo, speak);
+            badiCalc.addTodayInfoToAnswers(userInfo, speech, text);
         }
         if (topic === 'both') {
-            speak.push('<break time="3s"/>');
+            speech.push('<break time="3s"/>');
+            text.push('\n')
         }
         if (topic === 'verse' || topic === 'both') {
             // app1.ask('The verse is...');
@@ -144,69 +150,62 @@ function handlePost(request, response) {
                 repeatNum = repeatNum || 1;
                 for (var r = 0; r < repeatNum; r++) {
                     if (r > 0) {
-                        speak.push('<break time="5s"/>');
+                        speech.push('<break time="5s"/>');
+                        text.push('\n  \n  \n')
                     }
                     if (r > 0 || repeatNum > 1) {
-                        speak.push(`\n<say-as interpret-as="ordinal">${r + 1}</say-as>`)
-                        speak.push('\n<break time="1s"/>');
+                        speech.push(`<say-as interpret-as="ordinal">${r + 1}</say-as>`)
+                        text.push(`${r + 1}:\n`)
+                        speech.push('<break time="1s"/>');
                     }
-                    speak.push(voiceVerse);
-                    speak.push(info.verse);
-                    speak.push('</voice>');
-                    speak.push(voiceNormal);
+                    speech.push('</voice>');
+                    speech.push(voiceVerse);
+
+                    speech.push(info.verse);
+                    text.push(info.verse);
+
+                    speech.push('</voice>');
+                    speech.push(voiceNormal);
                 }
             } else {
-                speak.push(info.isEve
+                const intro = info.isEve
                     ? "The verse for this evening is: "
-                    : "The verse for this morning is: ");
-                speak.push('  \n  \n  <break time="1s"/>');
-                speak.push('</voice>');
-                speak.push(voiceVerse);
+                    : "The verse for this morning is: ";
+                speech.push(intro);
+                text.push(intro + '\n\n');
+                speech.push('<break time="1s"/>');
+                speech.push('</voice>');
 
-                speak.push(info.verse);
+                speech.push(voiceVerse);
+
+                speech.push(info.verse);
+                text.push(info.verse);
                 // speak.push(` - Bahá'u'lláh.  `);
-                
-                speak.push('</voice>');
-                speak.push(voiceNormal);
 
-                speak.push('\n  \n  \n  <break time="20s"/>');
-                speak.push('(I can repeat that a number of times if you wish. Just let me know how many times!)');
+                speech.push('</voice>');
+                speech.push(voiceNormal);
+
+                speech.push('<break time="2s"/>');
+                speech.push('(I can repeat that a number of times if you wish. Just let me know how many times!)');
+                text.push('\n  \n  \n(I can repeat that a number of times if you wish. Just let me know how many times!)');
             }
         }
 
-        if (topic === 'users') {
-            var locations = {};
-            Object.keys(knownUsers).forEach(function (key) {
-                var u = knownUsers[key];
-                var loc = u.location || '?';
-                if (loc) {
-                    if (locations[loc]) {
-                        locations[loc]++;
-                    } else {
-                        locations[loc] = 1;
-                    }
-                }
-            });
-            var array = [];
-            Object.keys(locations).forEach(function (key) {
-                var num = locations[key];
-                array.push(key + (num > 1 ? ` (${num})` : ''))
-            });
-            array.sort();
-            array[array.length - 1] = 'and ' + array[array.length - 1];
-            var text = array.join(array.length > 2 ? ', ' : ' ');
-
-            speak.push(`I've talked to ${Object.keys(knownUsers).length} people so far! \n\n They are from: ${text}.`);
+        if (speech.length <= 2) {
+            speech.push(`Sorry, I didn't understand that. Please try again!`);
+            text.push(`Sorry, I didn't understand that. Please try again!`);
         }
-
-        if (speak.length <= 2) {
-            speak.push(`Sorry, I didn't understand that. Please try again!`);
-        }
-        speak.push('</voice></speak>')
-        app.ask(speak.join(' '));
+        speech.push('</voice></speak>')
+        ask(speech.join(' '), text.join(''));
     }
 
-
+    function ask(speech, text) {
+        app.ask({
+            speech: speech,
+            displayText: text
+        });
+        console.log('Speech', speech)
+    }
 
 
 
@@ -256,7 +255,7 @@ function handlePost(request, response) {
     // }
     // actionMap.set('request_permission', requestPermission);
 
-    function receiveLocation(app) {
+    function receiveLocation() {
         if (app.isPermissionGranted()) {
             /*
                 "coordinates": {
@@ -277,16 +276,11 @@ function handlePost(request, response) {
             externalInfo.getTimezoneInfo(userRef, userInfo);
             externalInfo.getLocationName(userRef, userInfo);
 
-            app.ask({
-                speech: '<speak>Okay, we are all set! Just say "Help" to learn what I can do.</speak>',
-                displayText: 'Okay, we are all set! Just say "Help" to learn what I can do.',
-                followupEvent: {
-                    name: "givePrompt" // not working
-                }
-            })
+            var msg = `Thank you!  I've got it!  Say Help if you want to learn what I can do.`;
+            ask(`<speak>${msg}</speak>`, msg);
 
         } else {
-            app.tell('Sorry, I\'m a bit confused right now and have to go. Please call for me when you want to try again!');
+            app.tell('Okay.  I will need it to be able to give you accurate information. Please call for me again when you can let me know your location!  Bye for now...');
         }
     }
 
@@ -295,12 +289,11 @@ function handlePost(request, response) {
     }
     function whoAmI(app) {
         //    <say-as interpret-as="characters">${spacedOut(userId)}</say-as>
-        var msg = `<speak>
-    Your user ID is 
-    ${spacedOut(userId)}
-    </speak>`;
-        console.log(msg);
-        app.ask(msg)
+        var speech = `<speak>Your user ID is ${spacedOut(userId)} <break time="1s"/>
+    (Wow, that was quite a mouthful!)</speak>`;
+        var text = `Your user ID is ${userId}`;
+        console.log(speech);
+        ask(speech, text)
     }
 
     function sayName(app) {
@@ -313,56 +306,158 @@ function handlePost(request, response) {
         }
     }
 
-    function tellMonthNames(app) {
+    function tellMonthNames() {
         var lang = app.getArgument('language') || 'english';
         var doBoth = lang === 'both';
         var list = lang === 'arabic' ? badiCalc.monthsArabic : badiCalc.monthsEnglish;
 
         console.log(lang, list);
 
-        var speak = ['<speak>'];
+        var speech = ['<speak>'];
+        var text = [];
 
         // if (lang === 'arabic') {
         //     speak.push('(Please excuse my pronounciation!) ')
         // }
-        speak.push('Here are the names of the months in the Wondrous Calendar:')
+        speech.push('Here are the names of the months in the Wondrous Calendar:  ')
+        text.push('Here are the names of the months in the Wondrous Calendar:\n')
         for (var i = 1; i < list.length; i++) {
-            var element = list[i];
-            element = element.replace(/[`’]/g, '');
+            var item = list[i];
+            item = item.replace(/[`’]/g, '');
 
-            speak.push(`\n${i}<break time="1s"/>`);
+            speech.push(`${i}<break time="1s"/>`);
+            text.push(`${i}: `);
 
             if (doBoth) {
                 // element is already in English
                 var ar = badiCalc.monthsArabic[i].replace(/[`’]/g, '');
 
-                speak.push(`${ar}`);
-                speak.push(' - <break time=".5s"/>')
-                speak.push(`${element}`);
+                speech.push(`${ar} <break time=".5s"/> ${item}`);
+                text.push(`${ar} - ${item}\n`);
 
             } else {
-                speak.push(`${element}`);
+                speech.push(`${item}`);
+                text.push(`${item}\n`);
             }
-            speak.push(`.  `);
-            speak.push(`<break time="2s"/>`);
+            speech.push(`<break time="2s"/>`);
         }
 
-        speak.push('</speak>');
-        app.ask(speak.join(''));
+        speech.push('</speak>');
+        ask(speech.join(''), text.join(''));
+    }
+
+    function resetLocation() {
+        var userInfo = knownUsers[userId];
+        delete userInfo.coord;
+        delete userInfo.location;
+        delete userInfo.zoneName;
+        userRef.set(userInfo);
+
+        app.askForPermission('Sure. ', app.SupportedPermissions.DEVICE_PRECISE_LOCATION);
+    }
+
+    function tellLocation() {
+        var speech = [];
+        var text = [];
+        if (userInfo.location) {
+            speech.push(`Google has told me that you are in ${userInfo.location}.`);
+            text.push(`Google has told me that you are in ${userInfo.location}.`);
+        } else {
+            speech.push(`I don't know where you are!`);
+            text.push(`I don't know where you are!`);
+        }
+
+        if (userInfo.zoneName) {
+            speech.push(`You are in the ${userInfo.zoneName.replace(/\//, ': ').replace(/_/g, ' ')} timezone.`);
+            text.push(`You are in the ${userInfo.zoneName} timezone.`);
+
+            var now = moment.tz(userInfo.zoneName);
+            var time = now.format('h:mm a')
+
+            speech.push(`It is about <say-as interpret-as="time" format="hms12">${time}</say-as> right now.`);
+            text.push(`It is about ${time} right now.`);
+
+        } else {
+            speech.push(`I don't know what timezone you are in.`);
+            text.push(`I don't know what timezone you are in.`);
+        }
+
+        ask(`<speak>${speech.join('  ')}</speak>`, text.join(' '));
     }
 
 
+    function tellUsers() {
+        var speech = [];
+        var text = [];
+
+        var locations = {};
+        const somewhere = 'an unknown location';
+
+        Object.keys(knownUsers).forEach(function (key) {
+            var u = knownUsers[key];
+            var loc = u.location || somewhere;
+            if (loc) {
+                if (locations[loc]) {
+                    locations[loc]++;
+                } else {
+                    locations[loc] = 1;
+                }
+            }
+        });
+        var array = [];
+        Object.keys(locations).forEach(function (key) {
+            var num = locations[key];
+            array.push(key + (num > 1 ? ` (${num})` : ''))
+        });
+        array.sort(function (a, b) {
+            if (a === somewhere) return 1;
+            return a <= b ? -1 : 1
+        });
+        array[array.length - 1] = 'and ' + array[array.length - 1];
+
+
+        speech.push(`I've talked to ${Object.keys(knownUsers).length} people so far!  They are from: ${array.join(array.length > 2 ? ', ' : ' ')}.`);
+
+        text.push(`I've talked to ${Object.keys(knownUsers).length} people so far!  They are from: ${array.join(',\n')}.`);
+
+        ask(`<speak>${speech.join('  ')}</speak>`, text.join(' '));
+    }
+
+
+    function tellSunset() {
+        var speech = [];
+        var text = [];
+
+        badiCalc.addSunTimes(userInfo, speech, text);
+
+        app.ask({
+            speech: `<speak>${speech.join('  ')}</speak>`,
+            displayText: text.join('  ')
+        })
+    }
+
     let actionMap = new Map();
     actionMap.set('input.welcome', welcome);
-    actionMap.set('input.welcome.fallback', receiveLocation);
+    actionMap.set('Welcome.Welcome-fallback', receiveLocation);
 
     actionMap.set('tell.answer', tellAnswer);
     actionMap.set('get_answer', tellAnswer);
+
+    actionMap.set('get.verse', tellVerse);
+    actionMap.set('get.date', tellDate);
+
     actionMap.set('tell.again', tellAgain);
 
     actionMap.set('get.names', tellMonthNames);
 
+    actionMap.set('reset_location', resetLocation);
+    actionMap.set('Changelocation.Changelocation-fallback', receiveLocation);
+
+    actionMap.set('where.am.i', tellLocation);
+    actionMap.set('when.is.sunset', tellSunset);
+
     actionMap.set('who_am_i', whoAmI);
+    actionMap.set('user.list', tellUsers);
 
     actionMap.set('get_name', sayName);
 
