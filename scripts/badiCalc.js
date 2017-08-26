@@ -3,11 +3,22 @@
 const moment = require('moment-timezone');
 const sunCalc = require('./sunCalc');
 const general = require('./general');
+const messages = require('./messagehelper');
 
 var _nawRuzOffsetFrom21 = [];
 var _twinHolyBirthdays = [];
+const splitSeparator = /[,،]+/;
 
 const sunCalcReady = false;
+
+var use24HourClock = getMessage('use24HourClock') === 'true';
+var ordinal = getMessage('ordinal').split(splitSeparator);
+var ordinalNames = getMessage('ordinalNames').split(splitSeparator);
+var elements = getMessage('elements').split(splitSeparator);
+
+function getMessage(a, b, c) {
+    return messages.get(a, b, c);
+}
 
 fillDatePresets();
 
@@ -15,7 +26,6 @@ function addSunTimes(profile, speech, text) {
     var coord = profile.coord;
     if (!coord) {
         general.addToBoth('Sorry. I don\'t know where you are, so can\'t tell you when sunset is.', speech, text);
-        urn;
     }
 
     var zoneName = profile.zoneName;
@@ -81,30 +91,307 @@ function addSunTimesInternal(sunsetStart, now, sunrise, sunset, speech, text) {
 
 }
 
-//function getSunTimes(profile) {
-//  var offset = profile.tzInfo.serverDiff;
-//  var coord = profile.coord;
-//  var noon = new Date();
-//  noon.setHours(12 + offset, 0, 0, 0);
-//
-//  var sunTimes = sunCalc.getTimes(noon, coord.lat, coord.lng);
-//  addHours(sunTimes.sunrise, offset);
-//  addHours(sunTimes.sunset, offset);
-//
-//  // times are right for the user, but ignore the timezone!
-//  return sunTimes;
-//}
-
-function addTodayDetails(profile, speech, text) {
+function addTodayDetails(useArNames, profile, speech, text) {
     var zoneName = profile.zoneName;
     var nowTz = moment.tz(zoneName);
-
     var coord = profile.coord;
     var bDateInfo = getBDateInfo(nowTz, coord, zoneName);
-    var bDate = bDateInfo.bDate;
+    var di = makeDi(nowTz, bDateInfo, coord, useArNames);
 
+    // console.log(di);
+
+    var msg = 'This is the weekday of {bWeekdayNamePri}, the day of {bDayNamePri}, of the month of {bMonthNamePri}, of the year {bYearInVahidNamePri}, of the {bVahidOrdinalName} {VahidLabelPri}, of the {bKullishayOrdinalName} {KullishayLabelPri}.'.filledWith(di);
+
+    console.log(msg);
+    var plain = msg.replace(/<u>/g, '').replace(/<\/u>/g, '');
+
+    speech.push(plain);
+    text.push(plain);
+}
+
+function makeDi(nowTz, bDateInfo, coord, useArNames) {
+    var currentTime = nowTz.toDate();
+
+    var bMonthNameAr = getMessage("bMonthNameAr").split(splitSeparator);
+    var bMonthMeaning = getMessage("bMonthMeaning").split(splitSeparator);
+
+    var bWeekdayNameAr = getMessage("bWeekdayNameAr").split(splitSeparator); // from Saturday
+    var bWeekdayMeaning = getMessage("bWeekDayMeaning").split(splitSeparator);
+
+    var bYearInVahidNameAr = getMessage("bYearInVahidNameAr").split(splitSeparator);
+    var bYearInVahidMeaning = getMessage("bYearInVahidMeaning").split(splitSeparator);
+
+    var bMonthNamePri;
+    var bMonthNameSec;
+    var bWeekdayNamePri;
+    var bWeekdayNameSec;
+    var bYearInVahidNamePri;
+    var bYearInVahidNameSec;
+
+    bMonthNamePri = useArNames ? bMonthNameAr : bMonthMeaning;
+    bMonthNameSec = !useArNames ? bMonthNameAr : bMonthMeaning;
+    bWeekdayNamePri = useArNames ? bWeekdayNameAr : bWeekdayMeaning;
+    bWeekdayNameSec = !useArNames ? bWeekdayNameAr : bWeekdayMeaning;
+    bYearInVahidNamePri = useArNames ? bYearInVahidNameAr : bYearInVahidMeaning;
+    bYearInVahidNameSec = !useArNames ? bYearInVahidNameAr : bYearInVahidMeaning;
+
+    var gWeekdayLong = getMessage("gWeekdayLong").split(splitSeparator);
+    var gWeekdayShort = getMessage("gWeekdayShort").split(splitSeparator);
+    var gMonthLong = getMessage("gMonthLong").split(splitSeparator);
+    var gMonthShort = getMessage("gMonthShort").split(splitSeparator);
+
+
+    var minDate = new Date(1844, 2, 21, 0, 0, 0, 0);
+    if (currentTime < minDate) {
+        currentTime = minDate;
+    } else {
+        var maxDate = new Date(2844, 2, 20, 0, 0, 0, 0);
+        if (currentTime > maxDate) {
+            currentTime = maxDate;
+        }
+    }
+
+    // var known = knownDateInfos[currentTime];
+    // if (known) {
+    //     return known;
+    // }
+
+    var bNow = bDateInfo.bDate;
+    // console.log('bNow', bNow)
+    // if (onlyStamp) {
+    //     return {
+    //         stamp: JSON.stringify(bNow),
+    //         stampDay: '{y}.{m}.{d}'.filledWith(bNow)
+    //     };
+    // }
+
+    // split the Baha'i day to be "Eve" - sunset to midnight; 
+    // and "Morn" - from midnight through to sunset
+    var frag1Noon = new Date(currentTime.getTime());
+    frag1Noon.setHours(12, 0, 0, 0);
+    if (!bNow.eve) {
+        // if not already frag1, make it so
+        frag1Noon.setDate(frag1Noon.getDate() - 1);
+    }
+    var frag2Noon = new Date(frag1Noon.getTime());
+    frag2Noon.setDate(frag2Noon.getDate() + 1);
+
+    var frag1SunTimes = sunCalc.getTimes(frag1Noon, coord.lat, coord.lng);
+    var frag2SunTimes = sunCalc.getTimes(frag2Noon, coord.lat, coord.lng);
+
+    var di = { // date info
+        frag1: frag1Noon,
+        frag1Year: frag1Noon.getFullYear(),
+        frag1Month: frag1Noon.getMonth(),
+        frag1Day: frag1Noon.getDate(),
+        frag1Weekday: frag1Noon.getDay(),
+
+        frag2: frag2Noon,
+        frag2Year: frag2Noon.getFullYear(),
+        frag2Month: frag2Noon.getMonth(), // 0 based
+        frag2Day: frag2Noon.getDate(),
+        frag2Weekday: frag2Noon.getDay(),
+
+        currentYear: currentTime.getFullYear(),
+        currentMonth: currentTime.getMonth(), // 0 based
+        currentMonth1: 1 + currentTime.getMonth(),
+        currentDay: currentTime.getDate(),
+        currentDay00: digitPad2(currentTime.getDate()),
+        currentWeekday: currentTime.getDay(),
+        currentTime: currentTime,
+
+        startingSunsetDesc12: showTime(frag1SunTimes.sunset),
+        startingSunsetDesc24: showTime(frag1SunTimes.sunset, 24),
+        endingSunsetDesc12: showTime(frag2SunTimes.sunset),
+        endingSunsetDesc24: showTime(frag2SunTimes.sunset, 24),
+        frag1SunTimes: frag1SunTimes,
+        frag2SunTimes: frag2SunTimes,
+
+        sunriseDesc12: showTime(frag2SunTimes.sunrise),
+        sunriseDesc24: showTime(frag2SunTimes.sunrise, 24),
+
+        bNow: bNow,
+        bDay: bNow.d,
+        bWeekday: 1 + (frag2Noon.getDay() + 1) % 7,
+        bMonth: bNow.m,
+        bYear: bNow.y,
+        bVahid: Math.floor(1 + (bNow.y - 1) / 19),
+        bDateCode: bNow.m + '.' + bNow.d,
+
+        bDayNameAr: bMonthNameAr[bNow.d],
+        bDayMeaning: bMonthMeaning[bNow.d],
+        bMonthNameAr: bMonthNameAr[bNow.m],
+        bMonthMeaning: bMonthMeaning[bNow.m],
+
+        bEraLong: getMessage('eraLong'),
+        bEraAbbrev: getMessage('eraAbbrev'),
+        bEraShort: getMessage('eraShort'),
+
+        stamp: JSON.stringify(bNow) // used to compare to other dates and for developer reference 
+    };
+
+    di.bDayNamePri = useArNames ? di.bDayNameAr : di.bDayMeaning;
+    di.bDayNameSec = !useArNames ? di.bDayNameAr : di.bDayMeaning;
+    di.bMonthNamePri = useArNames ? di.bMonthNameAr : di.bMonthMeaning;
+    di.bMonthNameSec = !useArNames ? di.bMonthNameAr : di.bMonthMeaning;
+
+    di.VahidLabelPri = useArNames ? getMessage('Vahid') : getMessage('VahidLocal');
+    di.VahidLabelSec = !useArNames ? getMessage('Vahid') : getMessage('VahidLocal');
+
+    di.KullishayLabelPri = useArNames ? getMessage('Kullishay') : getMessage('KullishayLocal');
+    di.KullishayLabelSec = !useArNames ? getMessage('Kullishay') : getMessage('KullishayLocal');
+
+    di.bKullishay = Math.floor(1 + (di.bVahid - 1) / 19);
+    di.bVahid = di.bVahid - (di.bKullishay - 1) * 19;
+    di.bYearInVahid = di.bYear - (di.bVahid - 1) * 19 - (di.bKullishay - 1) * 19 * 19;
+
+    di.bYearInVahidNameAr = bYearInVahidNameAr[di.bYearInVahid];
+    di.bYearInVahidMeaning = bYearInVahidMeaning[di.bYearInVahid];
+    di.bYearInVahidNamePri = useArNames ? di.bYearInVahidNameAr : di.bYearInVahidMeaning;
+    di.bYearInVahidNameSec = !useArNames ? di.bYearInVahidNameAr : di.bYearInVahidMeaning;
+
+    console.log(bWeekdayNameAr, di.bWeekday);
+    di.bWeekdayNameAr = bWeekdayNameAr[di.bWeekday];
+    di.bWeekdayMeaning = bWeekdayMeaning[di.bWeekday];
+    di.bWeekdayNamePri = useArNames ? di.bWeekdayNameAr : di.bWeekdayMeaning;
+    di.bWeekdayNameSec = !useArNames ? di.bWeekdayNameAr : di.bWeekdayMeaning;
+
+    di.elementNum = getElementNum(bNow.m);
+    di.element = elements[di.elementNum - 1];
+
+    di.bDayOrdinal = di.bDay + getOrdinal(di.bDay);
+    di.bVahidOrdinal = di.bVahid + getOrdinal(di.bVahid);
+    di.bKullishayOrdinal = di.bKullishay + getOrdinal(di.bKullishay);
+    di.bDayOrdinalName = getOrdinalName(di.bDay);
+    di.bVahidOrdinalName = getOrdinalName(di.bVahid);
+    di.bKullishayOrdinalName = getOrdinalName(di.bKullishay);
+
+    di.bDay00 = digitPad2(di.bDay);
+    di.frag1Day00 = digitPad2(di.frag1Day);
+    di.currentMonth01 = digitPad2(di.currentMonth1);
+    di.frag2Day00 = digitPad2(di.frag2Day);
+    di.frag1Month00 = digitPad2(1 + di.frag1Month); // change from 0 based
+    di.frag2Month00 = digitPad2(1 + di.frag2Month); // change from 0 based
+    di.bMonth00 = digitPad2(di.bMonth);
+    di.bYearInVahid00 = digitPad2(di.bYearInVahid);
+    di.bVahid00 = digitPad2(di.bVahid);
+
+    di.startingSunsetDesc = use24HourClock ? di.startingSunsetDesc24 : di.startingSunsetDesc12;
+    di.endingSunsetDesc = use24HourClock ? di.endingSunsetDesc24 : di.endingSunsetDesc12;
+    di.sunriseDesc = use24HourClock ? di.sunriseDesc24 : di.sunriseDesc12;
+
+    di.frag1MonthLong = gMonthLong[di.frag1Month];
+    di.frag1MonthShort = gMonthShort[di.frag1Month];
+    di.frag1WeekdayLong = gWeekdayLong[di.frag1Weekday];
+    di.frag1WeekdayShort = gWeekdayShort[di.frag1Weekday];
+
+    di.frag2MonthLong = gMonthLong[di.frag2Month];
+    di.frag2MonthShort = gMonthShort[di.frag2Month];
+    di.frag2WeekdayLong = gWeekdayLong[di.frag2Weekday];
+    di.frag2WeekdayShort = gWeekdayShort[di.frag2Weekday];
+
+    di.currentMonthLong = gMonthLong[di.currentMonth];
+    di.currentMonthShort = gMonthShort[di.currentMonth];
+    di.currentWeekdayLong = gWeekdayLong[di.currentWeekday];
+    di.currentWeekdayShort = gWeekdayShort[di.currentWeekday];
+    di.currentDateString = moment(di.currentTime).format('YYYY-MM-DD');
+
+
+    di.currentRelationToSunset = getMessage(bNow.eve ? 'afterSunset' : 'beforeSunset');
+    var thisMoment = new Date().getTime();
+    di.dayStarted = getMessage(thisMoment > di.frag1SunTimes.sunset.getTime() ? 'dayStartedPast' : 'dayStartedFuture');
+    di.dayEnded = getMessage(thisMoment > di.frag2SunTimes.sunset.getTime() ? 'dayEndedPast' : 'dayEndedFuture');
+    di.dayStartedLower = di.dayStarted.toLocaleLowerCase();
+    di.dayEndedLower = di.dayEnded.toLocaleLowerCase();
+
+    // di.bMonthDayYear = getMessage('gMonthDayYear', di);
+
+    if (di.frag1Year !== di.frag2Year) {
+        // Dec 31/Jan 1
+        // Dec 31, 2015/Jan 1, 2015
+        di.gCombined = getMessage('gCombined_3', di);
+        di.gCombinedY = getMessage('gCombinedY_3', di);
+    } else if (di.frag1Month !== di.frag2Month) {
+        // Mar 31/Apr 1
+        // Mar 31/Apr 1, 2015
+        di.gCombined = getMessage('gCombined_2', di);
+        di.gCombinedY = getMessage('gCombinedY_2', di);
+    } else {
+        // Jul 12/13
+        // Jul 12/13, 2015
+        di.gCombined = getMessage('gCombined_1', di);
+        di.gCombinedY = getMessage('gCombinedY_1', di);
+    }
+    di.nearestSunset = getMessage(bNow.eve ? "nearestSunsetEve" : "nearestSunsetDay", di);
+
+    di.stampDay = '{y}.{m}.{d}'.filledWith(di.bNow); // ignore eve/day
+
+    return di;
 
 }
+
+function digitPad2(num) {
+    return ('00' + num).slice(-2);
+}
+
+function getOrdinal(num) {
+    return ordinal[num] || ordinal[0] || num;
+}
+
+function getOrdinalName(num) {
+    return ordinalNames[num] || num;
+}
+
+function getElementNum(num) {
+    // the Bab's designations, found in 'https://books.google.ca/books?id=XTfoaK15t64C&pg=PA394&lpg=PA394&dq=get+of+the+heart+nader+bab&source=bl&ots=vyF-pWLAr8&sig=ruiuoE48sGWWgaB_AFKcSfkHvqw&hl=en&sa=X&ei=hbp0VfGwIon6oQSTk4Mg&ved=0CDAQ6AEwAw#v=snippet&q=%22air%20of%20eternity%22&f=false'
+
+    //  1, 2, 3
+    //  4, 5, 6, 7
+    //  8, 9,10,11,12,13
+    // 14,15,16,17,18,19
+    var element = 1;
+    if (num >= 4 && num <= 7) {
+        element = 2;
+    } else if (num >= 8 && num <= 13) {
+        element = 3;
+    } else if (num >= 14 && num <= 19) {
+        element = 4;
+    } else if (num === 0) {
+        element = 0;
+    }
+    return element;
+}
+
+function showTime(d, use24) {
+    var hoursType = use24HourClock || (use24 === 24) ? 24 : 0;
+    var show24Hour = hoursType === 24;
+    var hours24 = d.getHours();
+    var pm = hours24 >= 12;
+    var hours = show24Hour ?
+        hours24 :
+        hours24 > 12 ?
+        hours24 - 12 :
+        hours24 === 0 ?
+        12 :
+        hours24;
+    var minutes = d.getMinutes();
+    var time = hours + ':' + ('0' + minutes).slice(-2);
+    if (!show24Hour) {
+        if (hours24 === 12 && minutes === 0) {
+            time = getMessage('noon');
+        } else if (hours24 === 0 && minutes === 0) {
+            time = getMessage('midnight');
+        } else {
+            time = getMessage('timeFormat12')
+                .filledWith({
+                    time: time,
+                    ampm: pm ? getMessage('pm') : getMessage('am')
+                });
+        }
+    }
+    return time;
+};
+
 
 function addTodayInfoToAnswers(profile, speech, text) {
     var zoneName = profile.zoneName;
@@ -127,8 +414,8 @@ function addTodayInfoToAnswers(profile, speech, text) {
         greeting = (`Today is`);
     }
 
-    speech.push(greeting + ` the <say-as interpret-as="ordinal">${bDate.d}</say-as> day of the month of ${monthMeaning[bDate.m]}!`);
-    text.push(greeting + ` the ${bDate.d + general.getOrdinal(bDate.d)} day of the month of ${monthMeaning[bDate.m]}!`);
+    speech.push(greeting + ` the <say-as interpret-as="ordinal">${bDate.d}</say-as> day of ${monthMeaning[bDate.m]}!`);
+    text.push(greeting + ` the ${bDate.d + general.getOrdinal(bDate.d)} day of ${monthMeaning[bDate.m]}!`);
 
     speech.push(` The <say-as interpret-as="ordinal">${bDate.d}</say-as> day is named ${monthMeaning[bDate.d]}!`);
     text.push(` The ${bDate.d + general.getOrdinal(bDate.d)} day is named ${monthMeaning[bDate.d]}!`);

@@ -88,6 +88,15 @@ function handlePost(request, response) {
         tell('date');
     }
 
+    function tellDateFull() {
+        var speech = [];
+        var text = [];
+
+        var useArNames = body.result.parameters.language === 'arabic';
+
+        badiCalc.addTodayDetails(useArNames, userInfo, speech, text);
+        ask(speech, text);
+    }
     // function tellAnswer() {
     //     let topic = app.getArgument('topic');
 
@@ -127,7 +136,6 @@ function handlePost(request, response) {
 
         if (topic === 'date' || topic === 'both') {
             badiCalc.addTodayInfoToAnswers(userInfo, speech, text);
-            addWhatElse(speech, text);
         }
         if (topic === 'both') {
             speech.push('<break time="3s"/>');
@@ -409,12 +417,13 @@ function handlePost(request, response) {
 
     actionMap.set('get.verse', tellVerse);
     actionMap.set('get.date', tellDate);
+    actionMap.set('get.date.full1', tellDateFull);
 
     actionMap.set('tell.again', tellAgain);
 
     actionMap.set('get.names', tellMonthNames);
 
-    actionMap.set('reset_location', resetLocation);
+    actionMap.set('change.location', resetLocation);
     actionMap.set('Changelocation.Changelocation-fallback', receiveLocation);
 
     actionMap.set('where.am.i', tellLocation);
