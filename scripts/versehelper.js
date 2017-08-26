@@ -1,22 +1,27 @@
 const verses = require('./../assets/verses.json');
 
-function forNow(mDate) {
+function forNow(mDate, morningOrEvening) {
     // var key = '5.3';//sample
     var key = mDate.format('M.D');
-    var isEve = mDate.hour() > 15; // 4 pm and later?
+    var forEvening = morningOrEvening ?
+        morningOrEvening === 'evening' :
+        mDate.hour() >= 14; // 3 pm and later?
     var dayVerses = verses[key];
 
-    console.log('verse', mDate.format(), mDate.hour(), key, isEve, dayVerses)
+    console.log('verse', mDate.format(), mDate.hour(), key, forEvening, dayVerses)
 
     if (dayVerses) {
-        var verseInfo = dayVerses[isEve ? 'pm' : 'am'];
+        forEvening
+        var verseInfo = dayVerses[forEvening ? 'pm' : 'am'];
 
         if (verseInfo) {
+            forEvening
             return {
                 suffix: `Bahá'u'lláh, ${verseInfo.r}`,
-                isEve: isEve,
+                forEvening: forEvening,
                 verse: verseInfo.q
             }
+            forEvening
         }
     }
     return {};

@@ -12,7 +12,12 @@ function encodeAsFirebaseKey(string) {
 };
 
 function getOrdinal(num) {
-  return ['','st','nd','rd'][num] || 'th';
+    return ['', 'st', 'nd', 'rd'][num] || 'th';
+}
+
+function addToBoth(s, speech, text) {
+    speech.push(s);
+    text.push(s);
 }
 
 function getLocationInfo(userRef, userInfo) {
@@ -46,8 +51,7 @@ function extractUserId(app, request) {
     var id = '';
     if (app.isInSandbox()) {
         id = 'sandbox';
-    }
-    else {
+    } else {
         id = ((app.getUser() || {}).userId || request.body.sessionId);
         if (id.substr(0, 3) === '150') {
             id = 'sandbox'
@@ -56,10 +60,17 @@ function extractUserId(app, request) {
     return encodeAsFirebaseKey(id);
 }
 
+function cleanVerseForSpeech(text) {
+    return text
+        .replace(/\. \. \. /g, ' ')
+        .replace(/\.\.\./g, ' ');
+}
 
 
 module.exports = {
     getLocationInfo,
     extractUserId,
-    getOrdinal
+    getOrdinal,
+    cleanVerseForSpeech,
+    addToBoth
 };

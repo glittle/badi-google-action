@@ -1,41 +1,41 @@
 {
-  "name": "hello-action",
-  "description": "Actions SDK sample for Google App Engine",
-  "version": "0.0.1",
-  "private": true,
-  "license": "Apache-2.0",
-  "author": "Google Inc.",
-  "engines": {
-    "node": "~4.2"
-  },
-  "scripts": {
-    "lint": "semistandard --fix \"**/*.js\"",
-    "start": "node app.js",
-    "monitor": "nodemon app.js",
-    "deploy": "gcloud app deploy",
-    "test": "npm run lint"
-  },
-  "semistandard": {
-    "globals": [
-      "after",
-      "afterEach",
-      "before",
-      "beforeEach",
-      "describe",
-      "it"
-    ]
-  },
-  "dependencies": {
-    "actions-on-google": "^1.0.0",
-    "body-parser": "^1.15.2",
-    "dotenv": "^2.0.0",
-    "express": "^4.13.4",
-    "firebase-admin": "^5.1.0",
-    "moment": "^2.13.0",
-    "moment-timezone": "^0.5.4",
-    "node-rest-client": "^3.1.0"
-  },
-  "devDependencies": {
-    "semistandard": "^9.1.0"
-  }
+    "name": "hello-action",
+    "description": "Actions SDK sample for Google App Engine",
+    "version": "0.0.1",
+    "private": true,
+    "license": "Apache-2.0",
+    "author": "Google Inc.",
+    "engines": {
+        "node": "~4.2"
+    },
+    "scripts": {
+        "lint": "semistandard --fix \"**/*.js\"",
+        "start": "node app.js",
+        "monitor": "nodemon app.js",
+        "deploy": "gcloud app deploy",
+        "test": "npm run lint"
+    },
+    "semistandard": {
+        "globals": [
+            "after",
+            "afterEach",
+            "before",
+            "beforeEach",
+            "describe",
+            "it"
+        ]
+    },
+    "dependencies": {
+        "actions-on-google": "^1.0.0",
+        "body-parser": "^1.15.2",
+        "dotenv": "^4.0.0",
+        "express": "^4.13.4",
+        "firebase-admin": "^5.1.0",
+        "moment": "^2.13.0",
+        "moment-timezone": "^0.5.4",
+        "node-rest-client": "^3.1.0"
+    },
+    "devDependencies": {
+        "semistandard": "^11.0.0"
+    }
 }
