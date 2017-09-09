@@ -24,6 +24,9 @@ function handlePost(request, response) {
     var now = new Date();
     var body = request.body;
 
+    // console.log(request)
+    // console.log('address', request.connection.remoteAddress)
+
     console.log('\r\n\r\n---------------------------');
     console.log('------ incoming POST ------');
     console.log(`---${now.toLocaleTimeString()}---`);
@@ -129,6 +132,7 @@ function handlePost(request, response) {
 
         const voiceNormal = '<voice gender="female" variant="2">';
         const voiceVerse = '<voice gender="male" variant="2">';
+        const voiceEnd = '</voice>';
 
         var speech = [];
         var text = [];
@@ -156,13 +160,13 @@ function handlePost(request, response) {
                         text.push(`${r + 1}:\n`)
                         speech.push('<break time="1s"/>');
                     }
-                    speech.push('</voice>');
+                    speech.push(voiceEnd);
                     speech.push(voiceVerse);
 
                     speech.push(general.cleanVerseForSpeech(info.verse));
                     text.push(info.verse);
 
-                    speech.push('</voice>');
+                    speech.push(voiceEnd);
                     speech.push(voiceNormal);
 
                 }
@@ -173,7 +177,7 @@ function handlePost(request, response) {
                 speech.push(intro);
                 text.push(intro + '\n\n');
                 speech.push('<break time="1s"/>');
-                speech.push('</voice>');
+                speech.push(voiceEnd);
 
                 speech.push(voiceVerse);
 
@@ -181,14 +185,13 @@ function handlePost(request, response) {
                 text.push(info.verse);
                 // speak.push(` - Bahá'u'lláh.  `);
 
-                speech.push('</voice>');
+                speech.push(voiceEnd);
                 speech.push(voiceNormal);
 
                 speech.push('<break time="2s"/>');
                 speech.push('(We can repeat that a number of times if you wish. Just let me know how many times!)');
                 text.push('\n  \n  \n(We can repeat that a number of times if you wish. Just let me know how many times!)');
             }
-            speech.push('</voice>')
         }
 
         if (speech.length <= 2) {
@@ -196,6 +199,9 @@ function handlePost(request, response) {
         } else {
             addWhatElse(speech, text);
         }
+
+        speech.push(voiceEnd);
+
         askWithoutWhatElse(speech, text);
     }
 
